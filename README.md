@@ -58,6 +58,27 @@ chmod +x render.sh
   límites de uso razonables para pruebas; para uso en producción/volumen,
   añade tu API key en `esriConfig.apiKey` dentro de `index.html`.
 
+## Usando la API de AEMET (con tu api_key)
+
+`fetch_aemet.js` consulta la predicción diaria por municipio de AEMET y
+genera `sample_data/weather_points.json` automáticamente:
+
+```bash
+npm install node-fetch@2   # si tu Node es <18 (si es >=18, no hace falta)
+AEMET_API_KEY=tu_key node fetch_aemet.js
+```
+
+Antes edita `municipios.json` con los municipios que quieras mostrar en el
+vídeo (código INE/AEMET de 5 dígitos + lat/lon). AEMET no devuelve
+coordenadas en la respuesta de predicción, así que ese fichero es tu tabla
+de referencia; si necesitas los códigos/coordenadas de más municipios, el
+nomenclátor del INE o vuestro propio callejero del IGN te sirven.
+
+El script reparte las llamadas con una pausa de 1,2s (AEMET limita a ~50
+peticiones/minuto en el plan gratuito). Los códigos `estadoCielo` se mapean
+a nuestros iconos en `iconFromEstadoCielo()` — la tabla incluida es parcial,
+amplíala si ves iconos raros (`partly` es el valor por defecto).
+
 ## Si quieres iterar conmigo
 
 Pásame la URL real de tu API (o un JSON de ejemplo de lo que devuelve) y la

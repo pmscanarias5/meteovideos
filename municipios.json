@@ -1,0 +1,8 @@
+[
+  { "codigo": "28079", "nombre": "Madrid", "lat": 40.4168, "lon": -3.7038 },
+  { "codigo": "08019", "nombre": "Barcelona", "lat": 41.3874, "lon": 2.1686 },
+  { "codigo": "46250", "nombre": "Valencia", "lat": 39.4699, "lon": -0.3763 },
+  { "codigo": "41091", "nombre": "Sevilla", "lat": 37.3891, "lon": -5.9845 },
+  { "codigo": "50297", "nombre": "Zaragoza", "lat": 41.6488, "lon": -0.8891 },
+  { "codigo": "07040", "nombre": "Palma", "lat": 39.5696, "lon": 2.6502 }
+]

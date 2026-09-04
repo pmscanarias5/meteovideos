@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Weather Flythrough</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css" />
+  <script src="https://js.arcgis.com/4.31/"></script>
+  <style>
+    html, body, #viewDiv { margin: 0; padding: 0; height: 100%; width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+
+  <script>
+    // ------------------------------------------------------------------
+    // CONFIG: ajusta esto a tu API y a la ruta de cámara que quieras
+    // ------------------------------------------------------------------
+    const DATA_URL = "./sample_data/weather_points.json"; // <-- sustituye por tu URL de API real
+    const ROUTE_URL = "./sample_data/camera_route.json";  // waypoints de la cámara
+
+    // ArcGIS API key opcional. Sin key, funciona con el basemap "hybrid" público
+    // con límites de uso; para producción, mete tu API key aquí:
+    // esriConfig.apiKey = "TU_API_KEY";
+
+    require([
+      "esri/config",
+      "esri/Map",
+      "esri/views/SceneView",
+      "esri/Graphic",
+      "esri/layers/GraphicsLayer",
+      "esri/symbols/TextSymbol"
+    ], (esriConfig, Map, SceneView, Graphic, GraphicsLayer, TextSymbol) => {
+
+      const map = new Map({
+        basemap: "satellite",
+        ground: "world-elevation"
+      });
+
+      const graphicsLayer = new GraphicsLayer({ elevationInfo: { mode: "relative-to-ground", offset: 200 } });
+      map.add(graphicsLayer);
+
+      const view = new SceneView({
+        container: "viewDiv",
+        map: map,
+        qualityProfile: "high",
+        environment: { atmosphereEnabled: true, lighting: { directShadowsEnabled: false } },
+        ui: { components: [] } // sin controles de UI en pantalla, es para grabar
+      });
+
+      // Icono por tipo de condición. Cambia los emoji o sustitúyelos por
+      // PictureMarkerSymbol con tus propios PNG si prefieres iconografía custom.
+      const ICONS = {
+        sun: "☀️",
+        cloud: "☁️",
+        partly: "⛅",
+        rain: "🌧️",
+        storm: "⛈️",
+        snow: "❄️"
+      };
+
+      function pointGraphics(p) {
+        const iconSymbol = new TextSymbol({
+          text: ICONS[p.icon] || "☀️",
+          font: { size: 28 },
+          verticalAlignment: "bottom"
+        });
+        const tempSymbol = new TextSymbol({
+          text: `${Math.round(p.temp)}°`,
+          color: [255, 60, 60],
+          haloColor: [0, 0, 0, 0.6],
+          haloSize: 1.5,
+          font: { size: 20, weight: "bold" },
+          verticalAlignment: "top",
+          yoffset: -6
+        });
+        return [
+          new Graphic({ geometry: { type: "point", longitude: p.lon, latitude: p.lat }, symbol: iconSymbol }),
+          new Graphic({ geometry: { type: "point", longitude: p.lon, latitude: p.lat }, symbol: tempSymbol })
+        ];
+      }
+
+      let route = [];
+
+      // Interpola linealmente entre waypoints de la ruta según progreso t [0,1]
+      function cameraAtProgress(t) {
+        const n = route.length - 1;
+        const scaled = t * n;
+        const i = Math.min(Math.floor(scaled), n - 1);
+        const localT = scaled - i;
+        const a = route[i], b = route[i + 1];
+        const lerp = (x, y) => x + (y - x) * localT;
+        return {
+          position: {
+            longitude: lerp(a.lon, b.lon),
+            latitude: lerp(a.lat, b.lat),
+            z: lerp(a.z, b.z)
+          },
+          heading: lerp(a.heading, b.heading),
+          tilt: lerp(a.tilt, b.tilt)
+        };
+      }
+
+      // Expuesto para que Puppeteer lo llame frame a frame.
+      // Devuelve una promesa que resuelve cuando la vista ha terminado de
+      // renderizar esa posición (importante para no capturar frames a medio cargar).
+      window.setCameraAtProgress = function (t) {
+        view.camera = cameraAtProgress(t);
+        return new Promise((resolve) => {
+          const check = () => {
+            if (!view.updating) {
+              resolve(true);
+            } else {
+              setTimeout(check, 30);
+            }
+          };
+          setTimeout(check, 60);
+        });
+      };
+
+      window.appReady = false;
+
+      Promise.all([
+        fetch(DATA_URL).then(r => r.json()),
+        fetch(ROUTE_URL).then(r => r.json())
+      ]).then(([points, cameraRoute]) => {
+        route = cameraRoute;
+        points.forEach(p => graphicsLayer.addMany(pointGraphics(p)));
+        view.camera = cameraAtProgress(0);
+        view.when(() => {
+          window.appReady = true; // Puppeteer espera esta flag antes de empezar a capturar
+        });
+      });
+    });
+  </script>
+</body>
+</html>

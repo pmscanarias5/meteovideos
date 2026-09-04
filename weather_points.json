@@ -1,0 +1,9 @@
+[
+  { "lat": 41.9028, "lon": 12.4964, "temp": 33, "icon": "sun" },
+  { "lat": 45.4642, "lon": 9.1900,  "temp": 31, "icon": "partly" },
+  { "lat": 40.8518, "lon": 14.2681, "temp": 34, "icon": "sun" },
+  { "lat": 43.7696, "lon": 11.2558, "temp": 32, "icon": "cloud" },
+  { "lat": 44.4056, "lon": 8.9463,  "temp": 28, "icon": "rain" },
+  { "lat": 38.1157, "lon": 13.3615, "temp": 35, "icon": "sun" },
+  { "lat": 45.0703, "lon": 7.6869,  "temp": 27, "icon": "storm" }
+]

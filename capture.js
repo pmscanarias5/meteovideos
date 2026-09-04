@@ -25,15 +25,30 @@ async function main() {
 
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ["--use-gl=swiftshader", "--enable-webgl", "--ignore-gpu-blocklist"]
+    args: [
+      "--use-gl=angle",
+      "--use-angle=swiftshader-webgl",
+      "--enable-unsafe-swiftshader", // Chrome headless moderno exige esto para WebGL por software
+      "--enable-webgl",
+      "--ignore-gpu-blocklist",
+      "--disable-gpu-sandbox"
+    ]
   });
   const page = await browser.newPage();
   await page.setViewport(VIEWPORT);
 
-  console.log(`Cargando ${PAGE_URL} ...`);
-  await page.goto(PAGE_URL, { waitUntil: "networkidle0" });
+  // Vuelca en esta consola cualquier log/error que ocurra DENTRO de la página,
+  // para poder diagnosticar si algo falla al cargar la escena o los datos.
+  page.on("console", (msg) => console.log("  [página]", msg.text()));
+  page.on("pageerror", (err) => console.error("  [error de página]", err.message));
 
-  await page.waitForFunction("window.appReady === true", { timeout: 60000 });
+  console.log(`Cargando ${PAGE_URL} ...`);
+  // No usamos "networkidle0": un mapa 3D en vivo nunca deja de pedir tiles,
+  // así que esa condición no llegaría a cumplirse nunca. Basta con que cargue
+  // el HTML inicial; la escena real la esperamos con window.appReady abajo.
+  await page.goto(PAGE_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+
+  await page.waitForFunction("window.appReady === true", { timeout: 90000 });
   console.log("Escena lista. Capturando", TOTAL_FRAMES, "frames...");
 
   for (let i = 0; i < TOTAL_FRAMES; i++) {

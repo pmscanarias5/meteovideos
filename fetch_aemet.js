@@ -41,11 +41,23 @@ function iconFromEstadoCielo(codigo) {
 }
 
 // Llama al endpoint, sigue la redirección a "datos" y devuelve el JSON final.
-async function fetchAemet(endpoint) {
+// Si AEMET responde 429 (límite de uso alcanzado), reintenta con espera creciente.
+async function fetchAemet(endpoint, attempt = 1) {
   const res = await fetch(`https://opendata.aemet.es/opendata/api${endpoint}`, {
     headers: { "api_key": API_KEY }
   });
   const meta = await res.json();
+
+  if (meta.estado === 429) {
+    if (attempt > 5) {
+      throw new Error(`Límite de AEMET persistente tras ${attempt - 1} reintentos`);
+    }
+    const wait = 15000 * attempt; // 15s, 30s, 45s, 60s, 75s...
+    console.log(`    (429 - esperando ${wait / 1000}s antes de reintentar, intento ${attempt})`);
+    await new Promise(r => setTimeout(r, wait));
+    return fetchAemet(endpoint, attempt + 1);
+  }
+
   if (!meta.datos) {
     throw new Error(`Respuesta inesperada de AEMET: ${JSON.stringify(meta)}`);
   }
@@ -80,8 +92,8 @@ async function main() {
       console.warn(`FALLO ${m.nombre} (${m.codigo}): ${err.message}`);
     }
 
-    // AEMET limita a ~50 peticiones/minuto en el plan gratuito: pequeña pausa.
-    await new Promise(r => setTimeout(r, 1200));
+    // Pausa entre municipio y municipio (además del backoff automático en 429).
+    await new Promise(r => setTimeout(r, 3000));
   }
 
   const outPath = path.join(__dirname, "sample_data", "weather_points.json");
